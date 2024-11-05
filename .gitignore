@@ -1,0 +1,59 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Virtual environment folders
+venv/
+env/
+ENV/
+.venv/
+.ENV/
+
+# VS Code configuration files
+.vscode/
+
+# IDE settings directories
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# MacOS-specific files
+.DS_Store
+
+# Log files
+*.log
+
+# Cache files
+*.cache
+*.temp
+*.tmp
+
+# Test coverage reports
+htmlcov/
+*.cover
+.coverage
+.coverage.*
+.cache
+
+# Pytest cache
+.pytest_cache/
+
+# Database files
+*.sqlite3
+
+# Config files
+*.env
+.env.*
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# MyPy cache
+.mypy_cache/
+
+# Profiling data
+profiler.dat
