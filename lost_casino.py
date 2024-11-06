@@ -1,5 +1,21 @@
 import random
-from npc_names import npc_names
+npc_names = {
+    "Jack": {"last_name": "Shephard", "title": "The Leader", "trait": "Courageous"},
+    "Kate": {"last_name": "Austen", "title": "The Fugitive", "trait": "Resourceful"},
+    "Sawyer": {"last_name": "Ford", "title": "The Con Man", "trait": "Charming"},
+    "Locke": {"last_name": "Locke", "title": "The Hunter", "trait": "Mysterious"},
+    "Hurley": {"last_name": "Reyes", "title": "The Lucky", "trait": "Good-natured"},
+    "Sayid": {"last_name": "Jarrah", "title": "The Warrior", "trait": "Intelligent"},
+    "Sun": {"last_name": "Kwon", "title": "The Loyal", "trait": "Caring"},
+    "Jin": {"last_name": "Kwon", "title": "The Protector", "trait": "Dedicated"},
+    "Desmond": {"last_name": "Hume", "title": "The Constant", "trait": "Determined"},
+    "Ben": {"last_name": "Linus", "title": "The Manipulator", "trait": "Cunning"},
+    "Claire": {"last_name": "Littleton", "title": "The Mother", "trait": "Compassionate"},
+    "Charlie": {"last_name": "Pace", "title": "The Musician", "trait": "Brave"},
+    "Michael": {"last_name": "Dawson", "title": "The Father", "trait": "Protective"},
+    "Walt": {"last_name": "Lloyd", "title": "The Gifted", "trait": "Mysterious"},
+    "Richard": {"last_name": "Alpert", "title": "The Ageless", "trait": "Wise"}
+}
 
 class Lobby:
     def __init__(self, games=None, current_game=None, player_balance=1000):
@@ -419,27 +435,76 @@ def play_blackjack(blackjack_game, player, npcs):
     print(f"Dealer's visible card: {blackjack_game.dealer_hand[0]}")
 
     # Check if the dealer has a Blackjack
-    if blackjack_game.dealer_blackjack_check():
+    dealer_value = blackjack_game.calculate_hand_value(blackjack_game.dealer_hand)
+    if dealer_value == 21:
+        print("\nDealer has Blackjack! All players lose unless they also have Blackjack.")
+        
+        # Check if player has Blackjack
+        if player.calculate_hand_value() == 21:
+            print(f"{player.name} has a Blackjack as well! It's a tie, and the bet is returned.")
+            player.balance += player_bet
+        else:
+            print(f"{player.name} loses the bet.")
+        
+        # Check if each NPC has Blackjack
+        for npc in npcs:
+            npc_value = npc.calculate_hand_value()
+            if npc_value == 21:
+                print(f"{npc.get_full_name()} also has a Blackjack and ties with the dealer.")
+            else:
+                print(f"{npc.get_full_name()} loses.")
+                
+        # Ask if the player wants to play another round or leave
+        while True:
+            play_again = input("\nWould you like to play another round of Blackjack or leave? (play/leave): ").lower()
+            if play_again == "play":
+                play_blackjack(blackjack_game, player, npcs)
+                return
+            elif play_again == "leave":
+                print("Thanks for playing! Returning to the lobby.")
+                return
+            else:
+                print("Invalid choice. Please enter 'play' or 'leave'.")
         return
 
-    # Player's turn
-    if player.current_game == "Blackjack":
-        while True:
-            decision = player.make_decision()
-            if decision == "hit":
-                card = blackjack_game.draw_card()
-                player.receive_card(card)
-                print(f"{player.name} drew: {card}")
-                if player.calculate_hand_value() > 21:
-                    print(f"{player.name} busted with a value of {player.calculate_hand_value()}!")
+    # Player Blackjack check for auto-win, but let NPCs play
+    if player.calculate_hand_value() == 21:
+        print(f"{player.name} has a Blackjack! Wins double the bet.")
+        player.balance += player_bet * 2
+
+    # Player's turn (if not a Blackjack)
+    if player.calculate_hand_value() != 21:
+        original_bet = player_bet
+        hand_index = 0
+
+        while hand_index < len(player.hands):
+            print(f"\nPlaying hand {hand_index + 1} for {player.name}")
+            while True:
+                decision = player.make_decision(hand_index)
+                if decision == "hit":
+                    card = blackjack_game.draw_card()
+                    player.receive_card(card, hand_index)
+                    print(f"{player.name} drew: {card}")
+                    print(f"{player.name}'s new hand value: {player.calculate_hand_value(hand_index)}")
+                    if player.calculate_hand_value(hand_index) > 21:
+                        print(f"{player.name} busted with a value of {player.calculate_hand_value(hand_index)}!")
+                        break
+                elif decision == "stand":
+                    print(f"{player.name} stands with a value of {player.calculate_hand_value(hand_index)}.")
                     break
-            elif decision == "stand":
-                print(f"{player.name} stands with a value of {player.calculate_hand_value()}.")
-                break
-            elif decision == "split" and player.can_split():
-                player.split_hand()
-            else:
-                print("Invalid choice. Please enter 'hit', 'stand', or 'split'.")
+                elif decision == "split" and player.can_split(hand_index):
+                    if player.balance >= original_bet:
+                        card_to_split = player.hands[hand_index].pop()
+                        player.hands.append([card_to_split])
+                        player.balance -= original_bet
+                        print(f"{player.name} has split their hand and placed an additional bet of ${original_bet}.")
+                        print(f"Remaining balance: ${player.balance}")
+                    else:
+                        print(f"{player.name} does not have enough balance to split.")
+                        break
+                else:
+                    print("Invalid choice. Please enter 'hit', 'stand', or 'split'.")
+            hand_index += 1
 
     # NPCs' turns
     for npc in npcs:
@@ -451,6 +516,7 @@ def play_blackjack(blackjack_game, player, npcs):
             if npc.calculate_hand_value() > 21:
                 print(f"{npc.name} busted with a value of {npc.calculate_hand_value()}!")
                 break
+        print(f"{npc.name} stands with a value of {npc.calculate_hand_value()}.")
 
     # Dealer's turn
     print("\nDealer's turn.")
@@ -482,11 +548,11 @@ def play_blackjack(blackjack_game, player, npcs):
         npc_value = npc.calculate_hand_value()
         if npc_value <= 21:
             if dealer_value > 21 or npc_value > dealer_value:
-                print(f"{npc.name} wins!")
+                print(f"{npc.get_full_name()} wins!")
             elif npc_value < dealer_value:
-                print(f"{npc.name} loses.")
+                print(f"{npc.get_full_name()} loses.")
             else:
-                print(f"{npc.name} ties with the dealer.")
+                print(f"{npc.get_full_name()} ties with the dealer.")
 
     # Clear all hands and move cards to the trash deck
     def clear_and_discard(hand):
@@ -498,6 +564,16 @@ def play_blackjack(blackjack_game, player, npcs):
     for npc in npcs:
         clear_and_discard(npc.hands[0])
     clear_and_discard(blackjack_game.dealer_hand)
+
+    # Check if player balance has hit zero
+    if player.balance <= 0:
+        print("Game over! You have no balance left.")
+        if input("Would you like to start over? (yes/no): ").lower() == "yes":
+            player.balance = 1000  # Reset balance
+            play_blackjack(blackjack_game, player, npcs)
+        else:
+            print("Returning to the lobby.")
+            return
 
     # Ask the player if they want to play again
     while True:
