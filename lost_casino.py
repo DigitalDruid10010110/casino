@@ -12,7 +12,7 @@ class Blackjack:
         self.players = players if players else []  # Area for the players
         self.full_deck = full_deck if full_deck else self.create_deck()  # Initial full deck (shuffled)
         self.trash_deck = trash_deck if trash_deck else []  # Discarded cards
-        self.dealer = dealer  # Dealer
+        self.dealer_hand = []  # Dealer's hand
         self.min_bet = min_bet  # Minimum bet amount
 
     def create_deck(self):
@@ -57,30 +57,110 @@ class Blackjack:
             print(f"{player.name} placed a bet of ${amount}. Remaining balance: ${player.balance}")
             return True
 
+    def dealer_blackjack_check(self):
+        """Check if the dealer has a Blackjack."""
+        if self.calculate_hand_value(self.dealer_hand) == 21:
+            print("Dealer has a Blackjack! All players without 21 lose.")
+            return True
+        return False
+
+    def calculate_hand_value(self, hand):
+        """Calculate the total value of a hand (specific to Blackjack)."""
+        value = 0
+        ace_count = 0
+        for card in hand:
+            if card[0] in ['Jack', 'Queen', 'King']:
+                value += 10
+            elif card[0] == 'Ace':
+                ace_count += 1
+                value += 11
+            else:
+                value += int(card[0])
+
+        while value > 21 and ace_count > 0:
+            value -= 10
+            ace_count -= 1
+
+        return value
+
 class Roulette:
-    def __init__(self, players=None, wheel=None, dealer=None, table=None):
+    def __init__(self, players=None, wheel=None, dealer=None):
         self.players = players if players else []  # Area for the players
-        self.wheel = wheel if wheel else self.create_wheel()  # Method to set up the roulette wheel
-        self.dealer = dealer  # Dealer
-        self.table = table if table else {}  # Dictionary to place bets
+        self.wheel = wheel if wheel else self.create_wheel()  # Create the roulette wheel
+        self.dealer = dealer  # Dealer (not really needed for Roulette but kept for consistency)
 
     def create_wheel(self):
-        # Logic to create an American roulette wheel
-        pass
+        """Create a roulette wheel with numbers 0-36, including 00 for American Roulette."""
+        return [str(i) for i in range(37)] + ["00"]  # American Roulette wheel
+
+    def spin_wheel(self):
+        """Spin the wheel and return the winning number along with its color."""
+        winning_number = random.choice(self.wheel)
+        color = "red" if self.is_red(winning_number) else "black" if self.is_black(winning_number) else "green"
+        print(f"The wheel spins... and lands on {winning_number} ({color})!")
+        return winning_number
+
+    def is_red(self, number):
+        """Check if a number is red. Red numbers on an American Roulette wheel."""
+        red_numbers = {"1", "3", "5", "7", "9", "12", "14", "16", "18", "19", "21", "23", "25", "27", "30", "32", "34", "36"}
+        return number in red_numbers
+
+    def is_black(self, number):
+        """Check if a number is black. Black numbers on an American Roulette wheel."""
+        black_numbers = {"2", "4", "6", "8", "10", "11", "13", "15", "17", "20", "22", "24", "26", "28", "29", "31", "33", "35"}
+        return number in black_numbers
+
+    def place_bet(self, player, bet_type, amount):
+        """Place a bet for a player if they have enough balance."""
+        if amount > player.balance:
+            print(f"{player.name} does not have enough balance to place this bet.")
+            return None
+        player.balance -= amount
+        print(f"{player.name} placed a ${amount} bet on {bet_type}. Remaining balance: ${player.balance}")
+        return (bet_type, amount)
+
+    def evaluate_bets(self, winning_number, bets):
+        """Evaluate all bets and payout winners."""
+        for player, (bet_type, amount) in bets.items():
+            if bet_type == winning_number:  # Bet on a specific number
+                payout = amount * 35  # Payout for a straight bet
+                player.balance += payout
+                print(f"{player.name} wins ${payout} on a straight bet!")
+            elif bet_type == "even" and winning_number.isdigit() and int(winning_number) % 2 == 0:
+                payout = amount * 2
+                player.balance += payout
+                print(f"{player.name} wins ${payout} on an even bet!")
+            elif bet_type == "odd" and winning_number.isdigit() and int(winning_number) % 2 != 0:
+                payout = amount * 2
+                player.balance += payout
+                print(f"{player.name} wins ${payout} on an odd bet!")
+            elif bet_type == "red" and self.is_red(winning_number):
+                payout = amount * 2
+                player.balance += payout
+                print(f"{player.name} wins ${payout} on a red bet!")
+            elif bet_type == "black" and self.is_black(winning_number):
+                payout = amount * 2
+                player.balance += payout
+                print(f"{player.name} wins ${payout} on a black bet!")
+            else:
+                print(f"{player.name} loses their ${amount} bet.")
 
 class NPCPlayer:
     def __init__(self, balance=1000):
-        self.name, self.details = self.assign_random_name()  # Assign a random name and details
+        self.name, self.details = self.assign_random_name()
         self.hands = [[]]  # A list of hands, starting with one empty hand
-        self.balance = balance  # Starting balance
-        self.is_active = True  # Indicates if the player is active in a game
-        self.current_game = None  # Track the game the NPC is currently playing
+        self.balance = balance
+        self.is_active = True
+        self.current_game = None
 
     def assign_random_name(self):
-        """Assign a random name from the *Name* dictionary and return the name and details."""
-        name = random.choice(list(npc_names.keys()))
-        details = npc_names[name]
-        return name, details
+        """Assign a random unique name from npc_names."""
+        while True:
+            name = random.choice(list(npc_names.keys()))
+            if name not in used_names:
+                used_names.add(name)
+                details = npc_names[name]
+                return name, details
 
     def get_full_name(self):
         """Return the full name with title and trait."""
@@ -168,7 +248,9 @@ class NPCPlayer:
         else:
             print(f"{self.name} does not have enough balance to place this bet.")
             return 0
-        
+
+used_names = set()  # To keep track of used names and ensure uniqueness
+  
 
 class Player:
     def __init__(self, name, balance=1000):
@@ -178,12 +260,9 @@ class Player:
         self.is_active = True  # Indicates if the player is active in a game
         self.current_game = None  # Track the game the player is currently playing
 
-    def join_game(self, games):
-        """Prompt the player to choose a game and join it."""
-        print(f"Available games: {', '.join(games)}")
-        game_name = input("Which game would you like to join? ").capitalize()
-
-        if game_name in games:
+    def join_game(self, game_name):
+        """Assign the player to a game."""
+        if game_name in ["Blackjack", "Roulette"]:
             self.current_game = game_name
             print(f"{self.name} has joined {self.current_game}.")
         else:
@@ -222,11 +301,14 @@ class Player:
     def make_decision(self, hand_index=0):
         """Prompt the player to make a decision (specific to Blackjack)."""
         if self.current_game == "Blackjack":
-            decision = input(f"{self.name}, do you want to 'hit', 'stand', or 'split' (if possible)? ").lower()
-            if decision == "split" and self.can_split(hand_index):
-                self.split_hand()
-                return "split"
-            return decision
+            while True:  # Loop until a valid input is given
+                decision = input(f"{self.name}, do you want to 'hit', 'stand', or 'split' (if possible)? ").lower()
+                if decision in ["hit", "stand", "split"]:
+                    if decision == "split" and not self.can_split(hand_index):
+                        print("You cannot split this hand.")
+                        continue
+                    return decision
+                print("Invalid choice. Please enter 'hit', 'stand', or 'split'.")
         return "stand"
 
     def calculate_hand_value(self, hand_index=0):
@@ -259,6 +341,219 @@ class Player:
         else:
             print(f"{self.name} does not have enough balance to place this bet.")
             return 0
-        
 
+def main_lobby():
+    print("Welcome to the Lost Casino!")
+    player_name = input("Please enter your name: ")
+    player = Player(name=player_name)
+    lobby = Lobby()
+    npcs = [NPCPlayer() for _ in range(random.randint(2, 4))]
 
+    # Main loop for the lobby
+    while True:
+        print("\nYou are in the lobby. Available games: ", ", ".join(lobby.games))
+        choice = input("Would you like to 'join' a game, 'leave' the casino, or 'check' your balance? ").lower()
+
+        if choice == "join":
+            game_choice = input(f"Which game would you like to join? ({', '.join(lobby.games)}) ").capitalize()
+            if game_choice == "Blackjack":
+                player.join_game(game_choice)
+                print("\nYou have joined Blackjack!")
+                print("NPC Players joining the game:")
+                for npc in npcs:
+                    npc.join_game("Blackjack")
+                    print(f"{npc.get_full_name()} has joined the game.")
+
+                # Start the Blackjack game
+                blackjack_game = Blackjack(players=[player] + npcs)
+                play_blackjack(blackjack_game, player, npcs)
+            elif game_choice == "Roulette":
+                player.join_game(game_choice)
+                print("\nYou have joined Roulette!")
+                print("NPC Players joining the game:")
+                for npc in npcs:
+                    npc.join_game("Roulette")
+                    print(f"{npc.get_full_name()} has joined the game.")
+
+                # Start the Roulette game
+                roulette_game = Roulette(players=[player] + npcs)
+                play_roulette(roulette_game, player, npcs)
+            else:
+                print("Invalid game selection. Please try again.")
+        elif choice == "leave":
+            print("Thanks for visiting the Lost Casino! See you next time.")
+            break
+        elif choice == "check":
+            print(f"Your current balance is: ${player.balance}")
+        else:
+            print("Invalid choice. Please try again.")
+
+def play_blackjack(blackjack_game, player, npcs):
+    print("\nStarting a game of Blackjack...")
+
+    # Ask the player to place a bet
+    while True:
+        try:
+            player_bet = int(input("How much would you like to bet? (Minimum bet is $10) "))
+            if blackjack_game.place_bet(player, player_bet):
+                break
+        except ValueError:
+            print("Invalid input. Please enter a number.")
+
+    # NPCs place their bets
+    for npc in npcs:
+        npc_bet = random.randint(10, 50)
+        blackjack_game.place_bet(npc, npc_bet)
+
+    # Deal initial cards to all players and the dealer
+    for _ in range(2):
+        player.receive_card(blackjack_game.draw_card())
+        for npc in npcs:
+            npc.receive_card(blackjack_game.draw_card())
+        blackjack_game.dealer_hand.append(blackjack_game.draw_card())
+
+    # Show initial hands
+    print(f"\n{player.name}'s hand: {player.hands[0]} (Value: {player.calculate_hand_value()})")
+    for npc in npcs:
+        print(f"{npc.get_full_name()}'s hand: {npc.hands[0]} (Value: {npc.calculate_hand_value()})")
+    print(f"Dealer's visible card: {blackjack_game.dealer_hand[0]}")
+
+    # Check if the dealer has a Blackjack
+    if blackjack_game.dealer_blackjack_check():
+        return
+
+    # Player's turn
+    if player.current_game == "Blackjack":
+        while True:
+            decision = player.make_decision()
+            if decision == "hit":
+                card = blackjack_game.draw_card()
+                player.receive_card(card)
+                print(f"{player.name} drew: {card}")
+                if player.calculate_hand_value() > 21:
+                    print(f"{player.name} busted with a value of {player.calculate_hand_value()}!")
+                    break
+            elif decision == "stand":
+                print(f"{player.name} stands with a value of {player.calculate_hand_value()}.")
+                break
+            elif decision == "split" and player.can_split():
+                player.split_hand()
+            else:
+                print("Invalid choice. Please enter 'hit', 'stand', or 'split'.")
+
+    # NPCs' turns
+    for npc in npcs:
+        print(f"\n{npc.get_full_name()}'s turn.")
+        while npc.make_decision() == "hit":
+            card = blackjack_game.draw_card()
+            npc.receive_card(card)
+            print(f"{npc.name} drew: {card}")
+            if npc.calculate_hand_value() > 21:
+                print(f"{npc.name} busted with a value of {npc.calculate_hand_value()}!")
+                break
+
+    # Dealer's turn
+    print("\nDealer's turn.")
+    dealer_value = blackjack_game.calculate_hand_value(blackjack_game.dealer_hand)
+    print(f"Dealer's hand: {blackjack_game.dealer_hand} (Value: {dealer_value})")
+    while dealer_value < 17:
+        card = blackjack_game.draw_card()
+        blackjack_game.dealer_hand.append(card)
+        dealer_value = blackjack_game.calculate_hand_value(blackjack_game.dealer_hand)
+        print(f"Dealer drew: {card} (New value: {dealer_value})")
+
+    if dealer_value > 21:
+        print("Dealer busted!")
+
+    # Compare hands and determine the winner
+    print("\nFinal results:")
+    player_value = player.calculate_hand_value()
+    if player_value <= 21:
+        if dealer_value > 21 or player_value > dealer_value:
+            print(f"{player.name} wins and doubles their bet!")
+            player.balance += player_bet * 2
+        elif player_value < dealer_value:
+            print(f"{player.name} loses the bet.")
+        else:
+            print(f"It's a tie! {player.name} gets their bet back.")
+            player.balance += player_bet
+
+    for npc in npcs:
+        npc_value = npc.calculate_hand_value()
+        if npc_value <= 21:
+            if dealer_value > 21 or npc_value > dealer_value:
+                print(f"{npc.name} wins!")
+            elif npc_value < dealer_value:
+                print(f"{npc.name} loses.")
+            else:
+                print(f"{npc.name} ties with the dealer.")
+
+    # Clear all hands and move cards to the trash deck
+    def clear_and_discard(hand):
+        for card in hand:
+            blackjack_game.discard_card(card)
+        hand.clear()
+
+    clear_and_discard(player.hands[0])
+    for npc in npcs:
+        clear_and_discard(npc.hands[0])
+    clear_and_discard(blackjack_game.dealer_hand)
+
+    # Ask the player if they want to play again
+    while True:
+        play_again = input("\nWould you like to play another round of Blackjack or leave? (play/leave): ").lower()
+        if play_again == "play":
+            play_blackjack(blackjack_game, player, npcs)
+            break
+        elif play_again == "leave":
+            print("Thanks for playing! Returning to the lobby.")
+            break
+        else:
+            print("Invalid choice. Please enter 'play' or 'leave'.")
+       
+def play_roulette(roulette_game, player, npcs):
+    print("\nStarting a game of Roulette...")
+
+    # Collect bets from the player
+    bets = {}
+    while True:
+        try:
+            bet_amount = int(input("How much would you like to bet? "))
+            if bet_amount > player.balance:
+                print("You don't have enough balance to place this bet. Try again.")
+                continue
+            bet_type = input("What would you like to bet on? (number 0-36, 00, 'even', 'odd', 'red', or 'black'): ").lower()
+            if bet_type in roulette_game.wheel or bet_type in ["even", "odd", "red", "black"]:
+                bets[player] = roulette_game.place_bet(player, bet_type, bet_amount)
+                break
+            else:
+                print("Invalid bet type. Please choose a number 0-36, 00, 'even', 'odd', 'red', or 'black'.")
+        except ValueError:
+            print("Invalid input. Please enter a valid number.")
+
+    # Collect bets from NPCs
+    for npc in npcs:
+        bet_amount = random.randint(10, 50)  # NPCs bet randomly between $10 and $50
+        bet_type = random.choice(roulette_game.wheel + ["even", "odd", "red", "black"])  # NPCs choose a random bet
+        bets[npc] = roulette_game.place_bet(npc, bet_type, bet_amount)
+
+    # Spin the wheel and determine the winning number
+    winning_number = roulette_game.spin_wheel()
+
+    # Evaluate all bets and payout winners
+    roulette_game.evaluate_bets(winning_number, bets)
+
+    # Ask the player if they want to play again or leave
+    while True:
+        play_again = input("\nWould you like to play another round of Roulette or leave? (play/leave): ").lower()
+        if play_again == "play":
+            play_roulette(roulette_game, player, npcs)
+            break
+        elif play_again == "leave":
+            print("Thanks for playing! Returning to the lobby.")
+            break
+        else:
+            print("Invalid choice. Please enter 'play' or 'leave'.")
+
+if __name__ == "__main__":
+    main_lobby()
