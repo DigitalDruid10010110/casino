@@ -1,4 +1,21 @@
 import random
+import time
+import builtins
+
+# Save the original print function
+original_print = builtins.print
+
+# Defines the slow_print version of print
+def slow_print(*args, delay=0.05, **kwargs):
+    text = " ".join(str(arg) for arg in args)
+    for char in text:
+        original_print(char, end='', flush=True, **kwargs)
+        time.sleep(delay)
+    original_print()  # Move to the next line
+
+# Replace the built-in print with slow_print
+builtins.print = slow_print
+
 npc_names = {
     "Jack": {"last_name": "Shephard", "title": "The Leader", "trait": "Courageous"},
     "Kate": {"last_name": "Austen", "title": "The Fugitive", "trait": "Resourceful"},
@@ -445,7 +462,7 @@ def play_blackjack(blackjack_game, player, npcs):
             player.balance += player_bet
         else:
             print(f"{player.name} loses the bet.")
-        
+
         # Check if each NPC has Blackjack
         for npc in npcs:
             npc_value = npc.calculate_hand_value()
@@ -453,30 +470,23 @@ def play_blackjack(blackjack_game, player, npcs):
                 print(f"{npc.get_full_name()} also has a Blackjack and ties with the dealer.")
             else:
                 print(f"{npc.get_full_name()} loses.")
-                
-        # Ask if the player wants to play another round or leave
-        while True:
-            play_again = input("\nWould you like to play another round of Blackjack or leave? (play/leave): ").lower()
-            if play_again == "play":
-                play_blackjack(blackjack_game, player, npcs)
-                return
-            elif play_again == "leave":
-                print("Thanks for playing! Returning to the lobby.")
-                return
-            else:
-                print("Invalid choice. Please enter 'play' or 'leave'.")
-        return
+        
+        # Clear all hands and move cards to the trash deck after dealer blackjack
+        clear_and_discard(player.hands[0])
+        for npc in npcs:
+            clear_and_discard(npc.hands[0])
+        clear_and_discard(blackjack_game.dealer_hand)
+        
+        return  # End the game if dealer has blackjack
 
-    # Player Blackjack check for auto-win, but let NPCs play
+    # Player's turn if dealer doesn't have a Blackjack
+    player_blackjack = False
     if player.calculate_hand_value() == 21:
-        print(f"{player.name} has a Blackjack! Wins double the bet.")
-        player.balance += player_bet * 2
-
-    # Player's turn (if not a Blackjack)
-    if player.calculate_hand_value() != 21:
-        original_bet = player_bet
+        print(f"{player.name} has a Blackjack! Potential win if dealer does not match.")
+        player_blackjack = True  # Flag that the player has Blackjack for later evaluation
+    else:
+        # Let player make decisions if they don't have Blackjack
         hand_index = 0
-
         while hand_index < len(player.hands):
             print(f"\nPlaying hand {hand_index + 1} for {player.name}")
             while True:
@@ -493,11 +503,11 @@ def play_blackjack(blackjack_game, player, npcs):
                     print(f"{player.name} stands with a value of {player.calculate_hand_value(hand_index)}.")
                     break
                 elif decision == "split" and player.can_split(hand_index):
-                    if player.balance >= original_bet:
+                    if player.balance >= player_bet:
                         card_to_split = player.hands[hand_index].pop()
                         player.hands.append([card_to_split])
-                        player.balance -= original_bet
-                        print(f"{player.name} has split their hand and placed an additional bet of ${original_bet}.")
+                        player.balance -= player_bet
+                        print(f"{player.name} has split their hand and placed an additional bet of ${player_bet}.")
                         print(f"Remaining balance: ${player.balance}")
                     else:
                         print(f"{player.name} does not have enough balance to split.")
@@ -534,7 +544,15 @@ def play_blackjack(blackjack_game, player, npcs):
     # Compare hands and determine the winner
     print("\nFinal results:")
     player_value = player.calculate_hand_value()
-    if player_value <= 21:
+    if player_blackjack:
+        # Handle the outcome if the player initially had Blackjack
+        if dealer_value != 21:
+            print(f"{player.name} wins with a Blackjack! Doubling the bet.")
+            player.balance += player_bet * 2
+        else:
+            print("It's a tie with the dealer Blackjack. Bet returned.")
+            player.balance += player_bet
+    elif player_value <= 21:
         if dealer_value > 21 or player_value > dealer_value:
             print(f"{player.name} wins and doubles their bet!")
             player.balance += player_bet * 2
@@ -594,30 +612,56 @@ def play_roulette(roulette_game, player, npcs):
     bets = {}
     while True:
         try:
-            bet_amount = int(input("How much would you like to bet? "))
+            bet_amount = int(input("How much would you like to bet? (Minimum bet is $10) "))
+            
+            # Check for minimum bet
+            if bet_amount < 10:
+                print("The minimum bet is $10. Please increase your bet.")
+                continue  # Retry if the bet is below minimum
+            
+            # Check if the player has enough balance
             if bet_amount > player.balance:
-                print("You don't have enough balance to place this bet. Try again.")
-                continue
-            bet_type = input("What would you like to bet on? (number 0-36, 00, 'even', 'odd', 'red', or 'black'): ").lower()
-            if bet_type in roulette_game.wheel or bet_type in ["even", "odd", "red", "black"]:
-                bets[player] = roulette_game.place_bet(player, bet_type, bet_amount)
-                break
-            else:
-                print("Invalid bet type. Please choose a number 0-36, 00, 'even', 'odd', 'red', or 'black'.")
+                print(f"You don't have enough balance to place this bet. Your balance is ${player.balance}.")
+                continue  # Retry if the bet is above available balance
+            
+            # If both conditions are met, the bet is valid
+            break
+
         except ValueError:
             print("Invalid input. Please enter a valid number.")
 
+    # Ask for the bet type
+    while True:
+        bet_type = input("What would you like to bet on? (number 0-36, 00, 'even', 'odd', 'red', or 'black'): ").lower()
+        if bet_type in roulette_game.wheel or bet_type in ["even", "odd", "red", "black"]:
+            # Add player’s bet to the bets dictionary
+            bets[player] = roulette_game.place_bet(player, bet_type, bet_amount)
+            break
+        else:
+            print("Invalid bet type. Please choose a number 0-36, 00, 'even', 'odd', 'red', or 'black'.")
+
     # Collect bets from NPCs
     for npc in npcs:
-        bet_amount = random.randint(10, 50)  # NPCs bet randomly between $10 and $50
-        bet_type = random.choice(roulette_game.wheel + ["even", "odd", "red", "black"])  # NPCs choose a random bet
-        bets[npc] = roulette_game.place_bet(npc, bet_type, bet_amount)
+        npc_bet_amount = random.randint(10, 50)  # NPCs bet randomly between $10 and $50
+        npc_bet_type = random.choice(roulette_game.wheel + ["even", "odd", "red", "black"])  # NPCs choose a random bet
+        bets[npc] = roulette_game.place_bet(npc, npc_bet_type, npc_bet_amount)
+        print(f"{npc.get_full_name()} placed a ${npc_bet_amount} bet on {npc_bet_type}. Remaining balance: ${npc.balance}")
 
     # Spin the wheel and determine the winning number
     winning_number = roulette_game.spin_wheel()
 
     # Evaluate all bets and payout winners
     roulette_game.evaluate_bets(winning_number, bets)
+
+    # Check if player balance is zero and offer to start over
+    if player.balance <= 0:
+        print("Game over! You have no balance left.")
+        if input("Would you like to start over? (yes/no): ").lower() == "yes":
+            player.balance = 1000  # Reset balance
+            play_roulette(roulette_game, player, npcs)
+        else:
+            print("Returning to the lobby.")
+            return
 
     # Ask the player if they want to play again or leave
     while True:
