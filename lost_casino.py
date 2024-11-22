@@ -960,7 +960,7 @@ def blackjack_instructions():
     print("\nPLAYER OPTIONS:")
     print("- 'Hit': Draw another card to increase your hand total.")
     print("- 'Stand': Keep your current hand and end your turn.")
-    print("- 'Double Down': Double your bet after the first two cards and receive only one more card (advanced players).")
+    print("- 'Double Down': Double your bet after the first two cards and receive only one more card (advanced players)(not currently in the game).")
     print("- 'Split': If your first two cards are of the same value, you may split them into two separate hands, each with its own bet.")
 
     # Dealer Rules
@@ -974,8 +974,8 @@ def blackjack_instructions():
     print("- *Know When to Hit or Stand:* Generally, if your hand is below 12, hitting is safer. If you're close to 21, consider standing.")
     print("- *Watch the Dealer’s Card:* If the dealer's visible card is a 2-6 (low cards), they are more likely to bust, so standing on a lower total can work.")
     print("- *Use Splitting Wisely:* Split pairs of Aces or 8s to increase your chances of winning. Avoid splitting 10s or 5s.")
-    print("- *Avoid Insurance Bets:* Insurance is generally a poor bet with high odds against the player.")
-    print("- *Double Down on Strong Hands:* If your total is 10 or 11 and the dealer shows a low card, doubling down can increase your payout.")
+    print("- *Avoid Insurance Bets:* Insurance is generally a poor bet with high odds against the player.(not currently in the game)")
+    print("- *Double Down on Strong Hands:* If your total is 10 or 11 and the dealer shows a low card, doubling down can increase your payout.(not currently in the game)")
     
     print("\nPress Enter to return to the main instructions.")
     input()
