@@ -17,7 +17,7 @@ Welcome to the Casino Game Project! This project was developed as part of a Code
 
 ## Features
 - Play Blackjack and Roulette
-- Interact with NPCs inspired by "Lost" characters
+- NPCs inspired by "Lost" characters join games and play
 - Realistic game mechanics and rules
 - ASCII art representations of game elements
 
@@ -26,7 +26,7 @@ To run the game locally, follow these steps:
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/yourusername/casino.git
+    git clone https://github.com/DigitalDruid10010110/casino.git
     ```
 2. Navigate to the project directory:
     ```bash
