@@ -144,68 +144,6 @@ class Blackjack:
 
         return value
 
-class Roulette:
-    def __init__(self, players=None, wheel=None, dealer=None):
-        self.players = players if players else []  # Area for the players
-        self.wheel = wheel if wheel else self.create_wheel()  # Create the roulette wheel
-        self.dealer = dealer  # Dealer (not really needed for Roulette but kept for consistency)
-
-    def create_wheel(self):
-        """Create a roulette wheel with numbers 0-36, including 00 for American Roulette."""
-        return [str(i) for i in range(37)] + ["00"]  # American Roulette wheel
-
-    def spin_wheel(self):
-        """Spin the wheel and return the winning number along with its color."""
-        winning_number = random.choice(self.wheel)
-        color = "red" if self.is_red(winning_number) else "black" if self.is_black(winning_number) else "green"
-        print(f"The wheel spins... and lands on {winning_number} ({color})!")
-        return winning_number
-
-    def is_red(self, number):
-        """Check if a number is red. Red numbers on an American Roulette wheel."""
-        red_numbers = {"1", "3", "5", "7", "9", "12", "14", "16", "18", "19", "21", "23", "25", "27", "30", "32", "34", "36"}
-        return number in red_numbers
-
-    def is_black(self, number):
-        """Check if a number is black. Black numbers on an American Roulette wheel."""
-        black_numbers = {"2", "4", "6", "8", "10", "11", "13", "15", "17", "20", "22", "24", "26", "28", "29", "31", "33", "35"}
-        return number in black_numbers
-
-    def place_bet(self, player, bet_type, amount):
-        """Place a bet for a player if they have enough balance."""
-        if amount > player.balance:
-            print(f"{player.name} does not have enough balance to place this bet.")
-            return None
-        player.balance -= amount
-        print(f"{player.name} placed a ${amount} bet on {bet_type}. Remaining balance: ${player.balance}")
-        return (bet_type, amount)
-
-    def evaluate_bets(self, winning_number, bets):
-        """Evaluate all bets and payout winners."""
-        for player, (bet_type, amount) in bets.items():
-            if bet_type == winning_number:  # Bet on a specific number
-                payout = amount * 35  # Payout for a straight bet
-                player.balance += payout
-                print(f"{player.name} wins ${payout} on a straight bet!")
-            elif bet_type == "even" and winning_number.isdigit() and int(winning_number) % 2 == 0:
-                payout = amount * 2
-                player.balance += payout
-                print(f"{player.name} wins ${payout} on an even bet!")
-            elif bet_type == "odd" and winning_number.isdigit() and int(winning_number) % 2 != 0:
-                payout = amount * 2
-                player.balance += payout
-                print(f"{player.name} wins ${payout} on an odd bet!")
-            elif bet_type == "red" and self.is_red(winning_number):
-                payout = amount * 2
-                player.balance += payout
-                print(f"{player.name} wins ${payout} on a red bet!")
-            elif bet_type == "black" and self.is_black(winning_number):
-                payout = amount * 2
-                player.balance += payout
-                print(f"{player.name} wins ${payout} on a black bet!")
-            else:
-                print(f"{player.name} loses their ${amount} bet.")
-
 class NPCPlayer:
     def __init__(self, balance=1000):
         self.name, self.details = self.assign_random_name()
@@ -350,12 +288,26 @@ class Player:
         hand = self.hands[hand_index]
         return len(hand) == 2 and hand[0][0] == hand[1][0]  # Check if both cards have the same value
 
-    def split_hand(self):
+    def split_hand(self, game, hand_index=0):
         """Split the player's hand into two separate hands if they have a pair."""
-        if self.can_split():
-            card1, card2 = self.hands[0]  # Get the two cards
-            self.hands = [[card1], [card2]]  # Split into two separate hands
+        if self.can_split(hand_index):
+            card1, card2 = self.hands[hand_index]  # Get the two cards
+            self.hands[hand_index] = [card1]  # Update the current hand with the first card
+            self.hands.append([card2])  # Add a new hand with the second card
+        
+            # Deal a new card to each new hand
+            self.hands[hand_index].append(game.deal_card())
+            self.hands[-1].append(game.deal_card())
+        
+            # Announce the new totals for each hand
             print(f"{self.name} has split their hand into two hands.")
+            for i, hand in enumerate(self.hands):
+                print(f"Hand {i+1}: {hand} (Total: {game.calculate_hand_total(hand)})")
+        
+            # Recursively check for further splits
+            for i in range(len(self.hands)):
+                if self.can_split(i):
+                    self.split_hand(game, i)
         else:
             print("You cannot split this hand.")
 
@@ -633,6 +585,23 @@ def play_blackjack(blackjack_game, player, npcs):
         else:
             print("Invalid choice. Please enter 'play' or 'leave'.")
 
+
+def display_roulette_table():
+    """Prints the ASCII representation of the roulette table."""
+    print_ascii(r"""
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                               ROULETTE TABLE                                 ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║   3  |  6  |  9  | 12  | 15  | 18  | 21  | 24  | 27  | 30  | 33  | 36  (RED) ║
+║  ─────────────────────────────────────────────────────────────────────────   ║
+║   2  |  5  |  8  | 11  | 14  | 17  | 20  | 23  | 26  | 29  | 32  | 35 (BLACK)║
+║  ─────────────────────────────────────────────────────────────────────────   ║
+║   1  |  4  |  7  | 10  | 13  | 16  | 19  | 22  | 25  | 28  | 31  | 34  (RED) ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  LOW (1-18) | EVEN | RED | BLACK | ODD | HIGH (19-36) ║    0    ║    00      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+""")
+
 corner_bets = {
     (1, 2, 4, 5), (2, 3, 5, 6), (4, 5, 7, 8), (5, 6, 8, 9),
     (10, 11, 13, 14), (11, 12, 14, 15), (13, 14, 16, 17), (14, 15, 17, 18),
@@ -661,44 +630,203 @@ split_bets = {
     (19, 22), (20, 23), (21, 24), (22, 25), (23, 26), (24, 27),
     (25, 28), (26, 29), (27, 30), (28, 31), (29, 32), (30, 33),
     (31, 34), (32, 35), (33, 36)
-}      
-def display_roulette_table():
-    """Prints the ASCII representation of the roulette table."""
-    print_ascii(r"""
-╔══════════════════════════════════════════════════════════════════════════════╗
-║                               ROULETTE TABLE                                 ║
-╠══════════════════════════════════════════════════════════════════════════════╣
-║   3  |  6  |  9  | 12  | 15  | 18  | 21  | 24  | 27  | 30  | 33  | 36  (RED)║
-║  ─────────────────────────────────────────────────────────────────────────  ║
-║   2  |  5  |  8  | 11  | 14  | 17  | 20  | 23  | 26  | 29  | 32  | 35  (BLACK)║
-║  ─────────────────────────────────────────────────────────────────────────  ║
-║   1  |  4  |  7  | 10  | 13  | 16  | 19  | 22  | 25  | 28  | 31  | 34  (RED)║
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  LOW (1-18) | EVEN | RED | BLACK | ODD | HIGH (19-36) ║         0          ║
-╚══════════════════════════════════════════════════════════════════════════════╝
-""")
+} 
+color_mapping = {
+    1: "red", 2: "black", 3: "red", 4: "black", 5: "red", 6: "black",
+    7: "red", 8: "black", 9: "red", 10: "black", 11: "black", 12: "red",
+    13: "black", 14: "red", 15: "black", 16: "red", 17: "black", 18: "red",
+    19: "red", 20: "black", 21: "red", 22: "black", 23: "red", 24: "black",
+    25: "red", 26: "black", 27: "red", 28: "black", 29: "black", 30: "red",
+    31: "black", 32: "red", 33: "black", 34: "red", 35: "black", 36: "red",
+    0: "green" , "00": "green"
+}
+
+class Roulette:
+    def __init__(self, players=None, wheel=None, dealer=None):
+        self.players = players if players else []  # Initialize with provided players or an empty list
+        self.wheel = wheel if wheel else self.create_wheel()
+        self.dealer = dealer
+        self.payouts = {  # Payout multipliers for each bet type
+            "single": 35,
+            "split": 17,
+            "street": 11,
+            "corner": 8,
+            "red": 1,
+            "black": 1,
+            "even": 1,
+            "odd": 1,
+            "high": 1,
+            "low": 1
+        }
+
+    def get_random_bet_choice(self, bet_type):
+        """Return a random bet choice based on the bet type for NPCs."""
+        if bet_type == "single":
+            return str(random.choice(range(37)))
+        elif bet_type in ["red", "black", "even", "odd", "high", "low"]:
+            return bet_type
+        elif bet_type == "split":
+            return random.choice(list(split_bets))  # Use global split_bets
+        elif bet_type == "street":
+            return random.choice(list(street_bets))  # Use global street_bets
+        elif bet_type == "corner":
+            return random.choice(list(corner_bets))  # Use global corner_bets
+    
+    def create_wheel(self):
+        """Create a roulette wheel with numbers 0-36, including 00 for American Roulette."""
+        return [str(i) for i in range(37)] + ["00"]  # American Roulette wheel
+
+    def spin_wheel(self):
+        """Spin the wheel and return the winning number along with its color."""
+        winning_number = random.choice(self.wheel)
+        color = self.get_color(winning_number)  # Use get_color instead of is_red/is_black
+        print(f"The wheel spins... and lands on {winning_number} ({color})!")
+        return winning_number, color
+
+    def get_color(self, number):
+        """Return the color of a roulette number."""
+        red_numbers = {"1", "3", "5", "7", "9", "12", "14", "16", "18", "19", "21", "23", "25", "27", "30", "32", "34", "36"}
+        black_numbers = {"2", "4", "6", "8", "10", "11", "13", "15", "17", "20", "22", "24", "26", "28", "29", "31", "33", "35"}
+    
+        if str(number) in red_numbers:
+            return "red"
+        elif str(number) in black_numbers:
+            return "black"
+        return "green"
+    
+    def place_bet(self, player, bet_type, amount, bet_choice):
+        """Place a bet for a player and deduct the bet amount if valid."""
+        if amount > player.balance:
+            print(f"{player.name} does not have enough balance to place this bet.")
+            return None
+        player.balance -= amount
+        print(f"{player.name} placed a ${amount} bet on {bet_type} {bet_choice}. Remaining balance: ${player.balance}")
+        return (bet_type, bet_choice, amount)
+
+    def parse_bet_input(self, bet_input):
+        """Parse bet input and return (bet_type, bet_choice) if valid."""
+        bet_type = None
+        bet_choice = None
+
+        # Check for single number bet (e.g., '5' or '00')
+        if bet_input.isdigit() and 0 <= int(bet_input) <= 36:
+            bet_type = "single"
+            bet_choice = int(bet_input)
+        elif bet_input == "00":
+            bet_type = "single"
+            bet_choice = "00"
+
+        # Check for color bets (red or black)
+        elif bet_input in ["red", "black"]:
+            bet_type = bet_input  # 'red' or 'black'
+            bet_choice = bet_input
+
+        # Check for even/odd, high/low bets
+        elif bet_input in ["even", "odd", "high", "low"]:
+            bet_type = bet_input  # 'even', 'odd', 'high', or 'low'
+            bet_choice = bet_input
+
+        # Check for split bets (e.g., 'split 1,2')
+        elif bet_input.startswith("split"):
+            try:
+                numbers = tuple(map(int, bet_input.split()[1].split(',')))
+                if numbers in split_bets:  # Assuming split_bets is defined elsewhere
+                    bet_type = "split"
+                    bet_choice = numbers
+                else:
+                    print("Invalid split bet. Please enter a valid pair.")
+            except (ValueError, IndexError):
+                print("Invalid split format. Use format 'split X,Y'.")
+
+        # Check for street bets (e.g., 'street 1,2,3')
+        elif bet_input.startswith("street"):
+            try:
+                numbers = tuple(map(int, bet_input.split()[1].split(',')))
+                if numbers in street_bets:  # Assuming street_bets is defined elsewhere
+                    bet_type = "street"
+                    bet_choice = numbers
+                else:
+                    print("Invalid street bet. Please enter a valid row.")
+            except (ValueError, IndexError):
+                print("Invalid street format. Use format 'street X,Y,Z'.")
+
+        # Check for corner bets (e.g., 'corner 1,2,4,5')
+        elif bet_input.startswith("corner"):
+            try:
+                numbers = tuple(map(int, bet_input.split()[1].split(',')))
+                if numbers in corner_bets:  # Assuming corner_bets is defined elsewhere
+                    bet_type = "corner"
+                    bet_choice = numbers
+                else:
+                    print("Invalid corner bet. Please enter a valid square.")
+            except (ValueError, IndexError):
+                print("Invalid corner format. Use format 'corner X,Y,Z,W'.")
+
+        # If valid bet was parsed, return the result
+        if bet_type and bet_choice:
+            return bet_type, bet_choice
+        else:
+            print("Invalid bet input. Please enter a valid bet type.")
+            return None
+
+    def evaluate_bets(self, winning_number, winning_color, bets):
+        """Evaluate all bets and payout winners."""
+        for player, (bet_type, bet_choice, amount) in bets.items():
+            if self.check_win(bet_type, bet_choice, winning_number, winning_color):
+                payout = amount * self.payouts[bet_type]
+                player.balance += payout
+                print(f"{player.name} won ${payout} with a {bet_type} bet on {bet_choice}!")
+            else:
+                print(f"{player.name} lost ${amount} with a {bet_type} bet on {bet_choice}.")
+            print(f"{player.name}'s new balance: ${player.balance}")
+
+    def check_win(self, bet_type, bet_choice, winning_number, winning_color):
+        """Check if the player's bet wins based on the winning number and color."""
+        if bet_type == "single" and str(bet_choice) == winning_number:
+            return True
+        elif bet_type == "red" and winning_color == "red":
+            return True
+        elif bet_type == "black" and winning_color == "black":
+            return True
+        elif bet_type == "odd" and int(winning_number) % 2 != 0:
+            return True
+        elif bet_type == "even" and int(winning_number) % 2 == 0:
+            return True
+        elif bet_type == "high" and 19 <= int(winning_number) <= 36:
+            return True
+        elif bet_type == "low" and 1 <= int(winning_number) <= 18:
+            return True
+        elif bet_type == "split" and winning_number in bet_choice:
+            if bet_choice in split_bets:
+                return True
+        elif bet_type == "street" and winning_number in bet_choice:
+            if bet_choice in street_bets:
+                return True
+        elif bet_type == "corner" and winning_number in bet_choice:
+            # Debugging output to verify corner bet evaluation
+            print(f"Evaluating corner bet: {bet_choice}, Winning number: {winning_number}")
+            if bet_choice in corner_bets:
+                print("Corner bet is valid and includes the winning number.")
+                return True
+            else:
+                print("Corner bet choice is not in corner_bets.")
+        return False
+    
+def display_bet_instructions():
+    """Displays the roulette table and provides examples of valid bets."""
+    display_roulette_table()  # Assuming this function displays the ASCII art of the table
+    print("\nEnter your bet type and choice together. Examples:")
+    print("Single number: '5'")
+    print("Red/Black, Odd/Even, High/Low: 'red', 'even', 'high'")
+    print("Split (two numbers): 'split 1,2'")
+    print("Street (three numbers in a row): 'street 1,2,3'")
+    print("Corner (four numbers in a square): 'corner 1,2,4,5'")
 
 def play_roulette(roulette_game, player, npcs):
-    """The main function to play a round of Roulette."""
+    """Handles the main loop for player interaction in a game of Roulette."""
     print("\nStarting a game of Roulette...")
-    display_roulette_table()
 
-    # Define bet types and payouts
-    payouts = {
-        "single": 35,
-        "split": 17,
-        "street": 11,
-        "corner": 8,
-        "red": 1,
-        "black": 1,
-        "even": 1,
-        "odd": 1,
-        "high": 1,
-        "low": 1
-    }
-
-    # Collect bets from the player and NPCs
-    bets = {}
+    # Step 1: Prompt for bet amount
     while True:
         try:
             bet_amount = int(input("How much would you like to bet? (Minimum bet is $10) "))
@@ -706,116 +834,39 @@ def play_roulette(roulette_game, player, npcs):
                 print("The minimum bet is $10. Please increase your bet.")
                 continue
             if bet_amount > player.balance:
-                print(f"You don't have enough balance to place this bet. Your balance is ${player.balance}.")
+                print(f"You don't have enough balance. Your balance is ${player.balance}.")
                 continue
             break
         except ValueError:
-            print("Invalid input. Please enter a valid number.")
+            print("Invalid input. Please enter a valid number for the bet amount.")
 
-    # Prompt the player to place a bet
-    print_inst("\nEnter your bet type and choice together. Examples:")
-    print_inst("Single number: '5'")
-    print_inst("Red/Black, Odd/Even, High/Low: 'red', 'even', 'high'")
-    print_inst("Split (two numbers): 'split 1,2'")
-    print_inst("Street (three numbers in a row): 'street 1,2,3'")
-    print_inst("Corner (four numbers in a square): 'corner 1,2,4,5'")
+    # Step 2: Display instructions for bet type and choice
+    display_bet_instructions()  # Show table and betting examples
+    bet_input = input("Enter your bet type and choice (e.g., 'split 10,11'): ").lower()
+    player_bet = roulette_game.parse_bet_input(bet_input)
 
-    # Loop until the player enters a valid bet type
-    while True:
-        bet_input = input("Enter your bet: ").lower()
-        bet_type, bet_choice = None, None
-
-        # Parse the bet input for each type
-        if bet_input.isdigit() or bet_input == "00":
-            bet_type, bet_choice = "single", bet_input
-        elif bet_input in ["red", "black", "even", "odd", "high", "low"]:
-            bet_type, bet_choice = bet_input, bet_input
-        elif bet_input.startswith("split"):
-            numbers = tuple(map(int, bet_input.split()[1].split(',')))
-            if numbers in split_bets:
-                bet_type, bet_choice = "split", numbers
-            else:
-                print("Invalid split bet. Please enter a valid pair.")
-                continue
-        elif bet_input.startswith("street"):
-            numbers = tuple(map(int, bet_input.split()[1].split(',')))
-            if numbers in street_bets:
-                bet_type, bet_choice = "street", numbers
-            else:
-                print("Invalid street bet. Please enter a valid row.")
-                continue
-        elif bet_input.startswith("corner"):
-            numbers = tuple(map(int, bet_input.split()[1].split(',')))
-            if numbers in corner_bets:
-                bet_type, bet_choice = "corner", numbers
-            else:
-                print("Invalid corner bet. Please enter a valid square.")
-                continue
-        else:
-            print("Invalid bet. Please enter a valid bet type.")
-            continue
-
-        # If a valid bet type and choice are identified, add to the bets dictionary
-        bets[player] = (bet_type, bet_choice, bet_amount)
-        print(f"{player.name} placed a ${bet_amount} {bet_type} bet on {bet_choice}.")
-        break
+    # Step 3: Validate and place the bet
+    if player_bet:
+        bet_type, bet_choice = player_bet
+        bets = {player: roulette_game.place_bet(player, bet_type, bet_amount, bet_choice)}
+    else:
+        print("Invalid bet. Please try again.")
+        return
 
     # Collect random bets from NPCs
     for npc in npcs:
         npc_bet_amount = random.randint(10, 50)
         npc_bet_type = random.choice(["single", "red", "black", "even", "odd", "high", "low", "split", "street", "corner"])
+        npc_bet_choice = roulette_game.get_random_bet_choice(npc_bet_type)
+        bets[npc] = roulette_game.place_bet(npc, npc_bet_type, npc_bet_amount, npc_bet_choice)
 
-        if npc_bet_type == "single":
-            npc_bet_choice = str(random.choice(range(37)))
-        elif npc_bet_type in ["red", "black", "even", "odd", "high", "low"]:
-            npc_bet_choice = npc_bet_type
-        elif npc_bet_type == "split":
-            npc_bet_choice = random.choice(list(split_bets))
-        elif npc_bet_type == "street":
-            npc_bet_choice = random.choice(list(street_bets))
-        elif npc_bet_type == "corner":
-            npc_bet_choice = random.choice(list(corner_bets))
+    # Spin the wheel and determine the result
+    winning_number, winning_color = roulette_game.spin_wheel()
 
-        bets[npc] = (npc_bet_type, npc_bet_choice, npc_bet_amount)
-        print(f"{npc.get_full_name()} placed a ${npc_bet_amount} {npc_bet_type} bet on {npc_bet_choice}.")
+    # Evaluate all bets and display results
+    roulette_game.evaluate_bets(winning_number, winning_color, bets)
 
-    # Spin the wheel and determine the winning number
-    winning_number = roulette_game.spin_wheel()
-    print(f"\nThe wheel spins... and lands on {winning_number}!")
-
-    # Evaluate all bets and display results for each bettor
-    for bettor, (bet_type, bet_choice, amount) in bets.items():
-        won = False
-        payout = 0
-        if bet_type == "single" and bet_choice == winning_number:
-            won = True
-            payout = amount * payouts["single"]
-        elif bet_type in ["red", "black", "even", "odd", "high", "low"] and bet_choice == winning_number:
-            won = True
-            payout = amount * payouts[bet_type]
-        elif bet_type == "split" and winning_number in bet_choice:
-            won = True
-            payout = amount * payouts["split"]
-        elif bet_type == "street" and winning_number in bet_choice:
-            won = True
-            payout = amount * payouts["street"]
-        elif bet_type == "corner" and winning_number in bet_choice:
-            won = True
-            payout = amount * payouts["corner"]
-
-        bettor_name = bettor.get_full_name() if hasattr(bettor, 'get_full_name') else bettor.name
-
-        if won:
-            bettor.balance += payout
-            print(f"{bettor_name} won ${payout} with a {bet_type} bet on {bet_choice}!")
-        else:
-            bettor.balance -= amount
-            print(f"{bettor_name} lost ${amount} with a {bet_type} bet on {bet_choice}.")
-    
-        # Display the current balance of the bettor after each result
-        print(f"{bettor_name}'s new balance: ${bettor.balance}")
-
-    # Check if player balance is zero and offer to start over
+    # Check if player has balance left or offer to start over
     if player.balance <= 0:
         print("Game over! You have no balance left.")
         if input("Would you like to start over? (yes/no): ").lower() == "yes":
@@ -825,17 +876,12 @@ def play_roulette(roulette_game, player, npcs):
             print("Returning to the lobby.")
             return
 
-    # Ask the player if they want to play again or leave
-    while True:
-        play_again = input("\nWould you like to play another round of Roulette or leave? (play/leave): ").lower()
-        if play_again == "play":
-            play_roulette(roulette_game, player, npcs)
-            break
-        elif play_again == "leave":
-            print("Thanks for playing! Returning to the lobby.")
-            break
-        else:
-            print("Invalid choice. Please enter 'play' or 'leave'.")
+    # Ask if the player wants to play again
+    play_again = input("\nWould you like to play another round of Roulette or leave? (play/leave): ").lower()
+    if play_again == "play":
+        play_roulette(roulette_game, player, npcs)
+    else:
+        print("Thanks for playing! Returning to the lobby.")
 # Settings menu function
 def settings_menu():
     while True:
