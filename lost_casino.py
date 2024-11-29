@@ -93,6 +93,12 @@ class Blackjack:
         # Draw a card from the top of the deck
         card = self.full_deck.pop(0)
         return card
+    
+    def clear_and_discard(self, hand):
+        # Clears the given hand and moves the cards to the discard pile.
+        while hand:
+            card = hand.pop()
+            self.trash_deck.append(card)
 
     def discard_card(self, card):
         # Add the discarded card to the trash deck
@@ -432,33 +438,36 @@ def play_blackjack(blackjack_game, player, npcs):
     print(f"Dealer's visible card: {blackjack_game.dealer_hand[0]}")
 
     # Check if the dealer has a Blackjack
-    dealer_value = blackjack_game.calculate_hand_value(blackjack_game.dealer_hand)
-    if dealer_value == 21:
-        print("\nDealer has Blackjack! All players lose unless they also have Blackjack.")
+    try:
+        dealer_value = blackjack_game.calculate_hand_value(blackjack_game.dealer_hand)
+        if dealer_value == 21:
+            print("\nDealer has Blackjack! All players lose unless they also have Blackjack.")
         
-        # Check if player has Blackjack
-        if player.calculate_hand_value() == 21:
-            print(f"{player.name} has a Blackjack as well! It's a tie, and the bet is returned.")
-            player.balance += player_bet
-        else:
-            print(f"{player.name} loses the bet.")
-
-        # Check if each NPC has Blackjack
-        for npc in npcs:
-            npc_value = npc.calculate_hand_value()
-            if npc_value == 21:
-                print(f"{npc.get_full_name()} also has a Blackjack and ties with the dealer.")
+            # Check if player has Blackjack
+            if player.calculate_hand_value() == 21:
+                print(f"{player.name} has a Blackjack as well! It's a tie, and the bet is returned.")
+                player.balance += player_bet
             else:
-                print(f"{npc.get_full_name()} loses.")
-        
-        # Clear all hands and move cards to the trash deck after dealer blackjack
-        clear_and_discard(player.hands[0])
-        for npc in npcs:
-            clear_and_discard(npc.hands[0])
-        clear_and_discard(blackjack_game.dealer_hand)
-        
-        return  # End the game if dealer has blackjack
+                print(f"{player.name} loses the bet.")
 
+            # Check if each NPC has Blackjack
+            for npc in npcs:
+                npc_value = npc.calculate_hand_value()
+                if npc_value == 21:
+                    print(f"{npc.get_full_name()} also has a Blackjack and ties with the dealer.")
+                else:
+                    print(f"{npc.get_full_name()} loses.")
+        
+            # Clear all hands and move cards to the trash deck after dealer blackjack
+            clear_and_discard(player.hands[0])
+            for npc in npcs:
+                clear_and_discard(npc.hands[0])
+            clear_and_discard(blackjack_game.dealer_hand)
+        
+            return  # End the game if dealer has blackjack
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    
     # Player's turn if dealer doesn't have a Blackjack
     player_blackjack = False
     if player.calculate_hand_value() == 21:
